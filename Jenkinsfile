@@ -2,8 +2,10 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_USER = '<your-dockerhub-username>'
-        IMAGE_NAME = 'jenkins-docker-demo'
+        // ✅ Put your real Docker Hub username here
+        DOCKERHUB_USER = 'akshitavidiyala'
+        // ✅ Name of your Docker Hub repo (create this on Docker Hub if not already)
+        IMAGE_NAME = 'exp9dev'
     }
 
     stages {
@@ -15,9 +17,10 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh '''
-                docker build -t $DOCKERHUB_USER/$IMAGE_NAME:${BUILD_NUMBER} .
-                '''
+                sh """
+                echo "Building Docker image: ${DOCKERHUB_USER}/${IMAGE_NAME}:${BUILD_NUMBER}"
+                docker build -t ${DOCKERHUB_USER}/${IMAGE_NAME}:${BUILD_NUMBER} .
+                """
             }
         }
 
@@ -26,20 +29,24 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
                                                  usernameVariable: 'DOCKER_USER',
                                                  passwordVariable: 'DOCKER_PASS')]) {
-                    sh '''
-                    echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                    '''
+                    sh """
+                    echo "Logging in to Docker Hub as ${DOCKER_USER}"
+                    echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
+                    """
                 }
             }
         }
 
         stage('Push Image to Docker Hub') {
             steps {
-                sh '''
-                docker tag $DOCKERHUB_USER/$IMAGE_NAME:${BUILD_NUMBER} $DOCKERHUB_USER/$IMAGE_NAME:latest
-                docker push $DOCKERHUB_USER/$IMAGE_NAME:${BUILD_NUMBER}
-                docker push $DOCKERHUB_USER/$IMAGE_NAME:latest
-                '''
+                sh """
+                echo "Tagging image as latest"
+                docker tag ${DOCKERHUB_USER}/${IMAGE_NAME}:${BUILD_NUMBER} ${DOCKERHUB_USER}/${IMAGE_NAME}:latest
+
+                echo "Pushing image tags to Docker Hub..."
+                docker push ${DOCKERHUB_USER}/${IMAGE_NAME}:${BUILD_NUMBER}
+                docker push ${DOCKERHUB_USER}/${IMAGE_NAME}:latest
+                """
             }
         }
     }
@@ -49,7 +56,10 @@ pipeline {
             sh 'docker image prune -f || true'
         }
         success {
-            echo "Build and push successful!"
+            echo "✅ Build and push successful!"
+        }
+        failure {
+            echo "❌ Build or push failed. Check console output."
         }
     }
 }
